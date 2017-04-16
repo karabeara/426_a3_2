@@ -184,6 +184,7 @@ Renderer.projectVertices = function(verts, viewMat) {
 
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 12 lines of code.
+
   // ----------- STUDENT CODE END ------------
 
   return projectedVerts;
@@ -198,8 +199,29 @@ Renderer.computeBoundingBox = function(projectedVerts) {
 
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 14 lines of code.
-  // ----------- STUDENT CODE END ------------
+  function checkBounds(vert) {
 
+    var roundedMinX = MATH.round(box.minX);
+    var roundedMinY = MATH.round(box.minY);
+    var roundedMaxX = MATH.round(box.maxX);
+    var roundedMaxY = MATH.round(box.maxY);
+
+    if (roundedMinX < box.minX) {
+      box.minX = roundedMinX;
+    }
+    if (roundedMinY < box.minY) {
+      box.minY = roundedMinY;
+    }
+    if (roundedMaxX > box.minX) {
+      box.maxX = roundedMinX;
+    }
+    if (roundedMaxY > box.maxY) {
+      box.maxY= roundedMinY;
+    }
+  }
+
+  projectedVerts.forEach(checkBounds(v));
+  // ----------- STUDENT CODE END ------------
   return box;
 };
 
@@ -209,6 +231,20 @@ Renderer.computeBarycentric = function(projectedVerts, x, y) {
   // return undefined if (x,y) is outside the triangle
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 15 lines of code.
+
+var triPoints = projectedVerts.map(function(vert) {
+  return new THREE.Vector3(vert.x, vert.y, vert.z);
+})
+var point = new THREE.Vector2(x,y);
+
+var triangle = new THREE.Triangle(triPoints[0], triPoints[1], triPoints[2]);
+if (triangle.containsPoints(point)) {
+
+  return triangle.barycoordFromPoint(point)
+}
+else {
+    return undefined;
+  }
   // ----------- STUDENT CODE END ------------
   return triCoords;
 };
