@@ -182,19 +182,19 @@ Renderer.projectVertices = function(verts, viewMat) {
   var projectedVerts = []; // Vector3/Vector4 array (you need z for z buffering)
 
   // ----------- STUDENT CODE BEGIN ------------
-  // camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
-
-  // this.camera.updateMatrixWorld();
-  // this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld)
-
-  var cameraMat = this.camera.matrixWorldInverse;
+  // viewMat --> camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
+  var orthogonalScale = 5;
 
   for (var i = 0; i < verts.length; i++) {
-    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0); //
-    projectedVerts[i] = projectedVerts[i].applyMatrix4(cameraMat);
+    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
     projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
-  }
 
+    projectedVerts[i].x /= orthogonalScale;
+    projectedVerts[i].y /= orthogonalScale * this.height / this.width;
+
+    projectedVerts[i].x = projectedVerts[i].x * this.width / 2 + this.width / 2;
+    projectedVerts[i].y = projectedVerts[i].y * this.height / 2 + this.height / 2;
+  }
   // ----------- Our reference solution uses 12 lines of code.
   // ----------- STUDENT CODE END ------------
   return projectedVerts;
