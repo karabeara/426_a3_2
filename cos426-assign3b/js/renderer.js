@@ -184,15 +184,16 @@ Renderer.projectVertices = function(verts, viewMat) {
   // ----------- STUDENT CODE BEGIN ------------
   // camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
 
+  // this.camera.updateMatrixWorld();
+  // this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld)
+
+  var cameraMat = this.camera.matrixWorldInverse;
+
   for (var i = 0; i < verts.length; i++) {
-    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
+    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0); //
+    projectedVerts[i] = projectedVerts[i].applyMatrix4(cameraMat);
     projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
   }
-
-  // projectedVerts = verts.map( function(v) {
-  //   var vertex = v.applyMatrix4(viewMat);
-  //   return vertex;
-  // });
 
   // ----------- Our reference solution uses 12 lines of code.
   // ----------- STUDENT CODE END ------------
