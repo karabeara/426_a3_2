@@ -178,14 +178,24 @@ Renderer.projectVerticesNaive = function(verts) {
   return projectedVerts;
 };
 
-
 Renderer.projectVertices = function(verts, viewMat) {
   var projectedVerts = []; // Vector3/Vector4 array (you need z for z buffering)
 
   // ----------- STUDENT CODE BEGIN ------------
+  // camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
+
+  for (var i = 0; i < verts.length; i++) {
+    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
+    projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
+  }
+
+  // projectedVerts = verts.map( function(v) {
+  //   var vertex = v.applyMatrix4(viewMat);
+  //   return vertex;
+  // });
+
   // ----------- Our reference solution uses 12 lines of code.
   // ----------- STUDENT CODE END ------------
-
   return projectedVerts;
 };
 
