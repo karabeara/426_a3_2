@@ -189,6 +189,7 @@ Renderer.projectVertices = function(verts, viewMat) {
     projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
   }
 
+  
   // projectedVerts = verts.map( function(v) {
   //   var vertex = v.applyMatrix4(viewMat);
   //   return vertex;
