@@ -317,7 +317,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   // ----------- Our reference solution uses 45 lines of code.
 
   // do z buffer stuff
-  function calculateAverageVect(normals) {
+  function _calculateAverageVect(normals) {
     var avgNorm = new THREE.Vector3(0,0,0);
     normals.forEach(function (norm) {
      
@@ -326,7 +326,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
     avgNorm.divideScalar(normals.length)
     return avgNorm;
   }
-  function getFlatColor() {
+  function _getFlatColor(lightPos) {
     var flatColor = new Pixel(0, 0, 0);
     //console.log(material);
     if (material.ambient === undefined) {
@@ -336,9 +336,10 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
     flatColor.plus(material.ambient);
     }
     //console.log(normals)
-    var centroidNormal = calculateAverageVect(normals);
-    var centroidVertex = calculateAverageVect(verts);
-    var light_dir = (new THREE.Vector3()).subVectors(Renderer.lightPos, centroidVertex).normalize();
+    var centroidNormal = _calculateAverageVect(normals);
+    //console.log(centroidNormal)
+    var centroidVertex = _calculateAverageVect(verts);
+    var light_dir = (new THREE.Vector3()).subVectors(lightPos, centroidVertex).normalize();
     var ndotl = centroidNormal.dot(light_dir);
 
     if (material.diffuseComponent === undefined) {
@@ -353,21 +354,20 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
 
 
 
-  // find out elijible pixels
   //console.log(verts)
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
-  var faceColor = getFlatColor(projectedTriangle, this.lightPos);
+  var faceColor = _getFlatColor(this.lightPos);
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
-  console.log(projectedTriangle)
-  assert(false)
+  //console.log(projectedTriangle)
+  //assert(false)
   for (var x = boundBox.minX; x < boundBox.maxX; x++) {
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) +0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
-        //this.buffer.setPixel(x,y,faceColor);
-        this.buffer.setPixel(x, y, new Pixel(1,0,0));
+        this.buffer.setPixel(x,y,faceColor);
+        //this.buffer.setPixel(x, y, new Pixel(1,0,0));
       }
-       //this.buffer.setPixel(x, y, new Pixel(1,0,0)); for the bounding box
+       //this.buffer.setPixel(x, y, new Pixel(1,0,0));// for the bounding box
     }
   }
   // ----------- STUDENT CODE END ------------
