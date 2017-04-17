@@ -184,16 +184,19 @@ Renderer.projectVertices = function(verts, viewMat) {
   // ----------- STUDENT CODE BEGIN ------------
   // camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
 
-  for (var i = 0; i < verts.length; i++) {
-    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
-    projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
-  }
+  // this.camera.updateMatrixWorld();
+  // this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld)
 
-  
-  // projectedVerts = verts.map( function(v) {
-  //   var vertex = v.applyMatrix4(viewMat);
-  //   return vertex;
-  // });
+  // var cameraMat = this.camera.matrixWorldInverse;
+
+  // for (var i = 0; i < verts.length; i++) {
+  //   projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0); //
+  //   projectedVerts[i] = projectedVerts[i].applyMatrix4(cameraMat);
+  //   projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
+  // }
+  //console.log(verts)
+
+  projectedVerts = Renderer.projectVerticesNaive(verts);
 
   // ----------- Our reference solution uses 12 lines of code.
 
@@ -212,30 +215,32 @@ Renderer.computeBoundingBox = function(projectedVerts) {
   // ----------- Our reference solution uses 14 lines of code.
   function checkBounds(vert) {
 
-    var roundedMinX = MATH.round(box.minX);
-    var roundedMinY = MATH.round(box.minY);
-    var roundedMaxX = MATH.round(box.maxX);
-    var roundedMaxY = MATH.round(box.maxY);
+    var roundedVertX = Math.round(vert.x);
+    var roundedVertY = Math.round(vert.y);
 
-    if (roundedMinX < box.minX) {
-      box.minX = roundedMinX;
+
+    if (roundedVertX < box.minX) {
+      box.minX = roundedVertX;
     }
-    if (roundedMinY < box.minY) {
-      box.minY = roundedMinY;
+    if (roundedVertY < box.minY) {
+      box.minY = roundedVertY;
     }
-    if (roundedMaxX > box.minX) {
-      box.maxX = roundedMinX;
+    if (roundedVertX > box.maxX) {
+      box.maxX = roundedVertX;
     }
-    if (roundedMaxY > box.maxY) {
-      box.maxY= roundedMinY;
+    if (roundedVertY > box.maxY) {
+      box.maxY= roundedVertY;
     }
   }
 
-  projectedVerts.forEach(checkBounds(v));
+  projectedVerts.forEach(v => checkBounds(v));
   // ----------- STUDENT CODE END ------------
   return box;
 };
 
+function make2D(vert3D) {
+  return new THREE.Vector3(vert3D,x, vert3D.y,0);
+}
 Renderer.computeBarycentric = function(projectedVerts, x, y) {
   var triCoords = [];
   // (see https://fgiesen.wordpress.com/2013/02/06/the-barycentric-conspirac/)
@@ -244,13 +249,12 @@ Renderer.computeBarycentric = function(projectedVerts, x, y) {
   // ----------- Our reference solution uses 15 lines of code.
 
 var triPoints = projectedVerts.map(function(vert) {
-  return new THREE.Vector3(vert.x, vert.y, vert.z);
+  return new THREE.Vector3(vert.x, vert.y, 0);
 })
-var point = new THREE.Vector2(x,y);
+var point = new THREE.Vector3(x,y, 0);
 
-var triangle = new THREE.Triangle(triPoints[0], triPoints[1], triPoints[2]);
-if (triangle.containsPoints(point)) {
-
+var triangle = new THREE.Triangle(make2D(triPoints[0]), make2D(triPoints[1]), make2D(triPoints[2]));
+if (triangle.containsPoint(point)) {
   return triangle.barycoordFromPoint(point)
 }
 else {
@@ -261,6 +265,7 @@ else {
 };
 
 Renderer.drawTriangleWire = function(projectedVerts) {
+  //console.log("GSFD")
   var color = new Pixel(1.0, 0, 0);
   for (var i = 0; i < 3; i++) {
     var va = projectedVerts[(i + 1) % 3];
@@ -281,9 +286,63 @@ Renderer.drawTriangleWire = function(projectedVerts) {
 Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 45 lines of code.
+
+  // do z buffer stuff
+  function calculateAverageVect(normals) {
+    var avgNorm = new THREE.Vector3(0,0,0);
+    normals.forEach(function (norm) {
+     
+      avgNorm.add(norm)
+    })
+    avgNorm.divideScalar(normals.length)
+    return avgNorm;
+  }
+  function getFlatColor() {
+    var flatColor = new Pixel(0, 0, 0);
+    //console.log(material);
+    if (material.ambient === undefined) {
+      flatColor.plus(Reflection.ambient)
+    }
+    else {
+    flatColor.plus(material.ambient);
+    }
+    //console.log(normals)
+    var centroidNormal = calculateAverageVect(normals);
+    var centroidVertex = calculateAverageVect(verts);
+    var light_dir = (new THREE.Vector3()).subVectors(Renderer.lightPos, centroidVertex).normalize();
+    var ndotl = centroidNormal.dot(light_dir);
+
+    if (material.diffuseComponent === undefined) {
+      var diffuseComponent = Reflection.diffuse.copy().multipliedBy(ndotl);
+    }
+    else {
+    var diffuseComponent = material.diffuse.copy().multipliedBy(ndotl);
+    }
+    flatColor.plus(diffuseComponent);
+    return flatColor;
+  }
+
+
+
+  // find out elijible pixels
+  //console.log(verts)
+  var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
+  var faceColor = getFlatColor(projectedTriangle, this.lightPos);
+  var boundBox = Renderer.computeBoundingBox(projectedVerts);
+  console.log(projectedTriangle)
+  assert(false)
+  for (var x = boundBox.minX; x < boundBox.maxX; x++) {
+    for (var y = boundBox.minY; y < boundBox.maxY; y++) {
+      var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) +0.5, 0);
+      if (projectedTriangle.containsPoint(currentHalfPix)) {
+        //this.buffer.setPixel(x,y,faceColor);
+        this.buffer.setPixel(x, y, new Pixel(1,0,0));
+      }
+       //this.buffer.setPixel(x, y, new Pixel(1,0,0)); for the bounding box
+    }
+  }
   // ----------- STUDENT CODE END ------------
 };
-
 
 Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
