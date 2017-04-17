@@ -182,22 +182,51 @@ Renderer.projectVertices = function(verts, viewMat) {
   var projectedVerts = []; // Vector3/Vector4 array (you need z for z buffering)
 
   // ----------- STUDENT CODE BEGIN ------------
-  // camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
+  // viewMat --> camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
+  this.updateCameraParameters();
 
-  // this.camera.updateMatrixWorld();
-  // this.camera.matrixWorldInverse.getInverse(this.camera.matrixWorld)
+  var rightVector = new THREE.Vector3( );
+  rightVector = rightVector.crossVectors( this.cameraLookAtVector, this.cameraUpVector );
 
-  // var cameraMat = this.camera.matrixWorldInverse;
+  var cameraMat = new THREE.Matrix4();
+  // cameraMat.set( 1,0,0,0,
+  //                0,1,0,0,
+  //                0,0,1,0,
+  //                0,0,0,1,);
+  // right, up, back, and eye vectors in respective order
+  cameraMat.set( rightVector.x,             rightVector.y,             rightVector.z,             0,
+                 this.cameraUpVector.x,     this.cameraUpVector.y,     this.cameraUpVector.z,     0,
+                 this.cameraLookAtVector.x, this.cameraLookAtVector.y, this.cameraLookAtVector.z, 0,
+                 this.cameraPosition.x,     this.cameraPosition.y,     this.cameraPosition.z,     1 );
 
-  // for (var i = 0; i < verts.length; i++) {
-  //   projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0); //
-  //   projectedVerts[i] = projectedVerts[i].applyMatrix4(cameraMat);
-  //   projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
-  // }
-  //console.log(verts)
+  var i_proj = 0;
 
-  projectedVerts = Renderer.projectVerticesNaive(verts);
+  for (var i = 0; i < verts.length; i++) {
+    var orthogonalScale = verts[i].z + 5;
 
+    projectedVerts[i_proj] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
+    //projectedVerts[i_proj] = projectedVerts[i_proj].applyMatrix4(cameraMat);
+    projectedVerts[i_proj] = projectedVerts[i_proj].applyMatrix4(viewMat);
+
+    projectedVerts[i_proj].x /= orthogonalScale * this.height / this.width;
+    projectedVerts[i_proj].y /= orthogonalScale * this.height / this.width;
+
+    projectedVerts[i_proj].x = projectedVerts[i_proj].x * this.width / 2 + this.width / 2;
+    projectedVerts[i_proj].y = projectedVerts[i_proj].y * this.height / 2 + this.height / 2;
+
+    i_proj++;
+
+    // For Z-buffer
+    // if (projectedVerts[i].z <= 0) {
+    //   return [];
+    // }
+    // else if (this.negNear > Math.abs(projectedVerts[i].z) || this.negFar < Math.abs(projectedVerts[i].z)) {
+    //   return [];
+    // }
+    // else {
+    //    i_proj++;
+    //}
+  }
   // ----------- Our reference solution uses 12 lines of code.
 
   // ----------- STUDENT CODE END ------------
