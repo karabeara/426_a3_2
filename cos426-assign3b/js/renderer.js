@@ -375,9 +375,17 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
     assert(vertColors.length === verts.length);
     return vertColors;
   }
-  function _getGouraudInterpolatedColor() {
-
-    return vertColors[2];
+  function _getGouraudInterpolatedColor(baryCoord, vertColors) {
+    // console.log(baryCoord);
+    // console.log(vertColors);
+    var color = new Pixel(0,0,0);
+    var a = baryCoord.x
+   // console.log(baryCoord.x +baryCoord.y + baryCoord.z);
+    color.plus(vertColors[0].copyMultiplyScalar(baryCoord.x))
+    color.plus(vertColors[1].copyMultiplyScalar(baryCoord.y))
+    color.plus(vertColors[2].copyMultiplyScalar(baryCoord.z))
+    color.dividedBy(3);
+    return color;
 
   }
 
@@ -400,7 +408,8 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
         if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
-          this.buffer.setPixel(x,y,_getGouraudInterpolatedColor());
+          var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+          this.buffer.setPixel(x,y,_getGouraudInterpolatedColor(baryCoord, vertColors));
           this.zBuffer[x][y] = centroidDist;
         }
       }
