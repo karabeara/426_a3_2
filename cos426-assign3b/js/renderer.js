@@ -323,7 +323,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   // ----------- Our reference solution uses 45 lines of code.
 
 
-  
+
   function _getFlatColor(cameraPosition, lightPos) {
     var centroidVertex = _calculateAverageVect( verts );
     var centroidNormal = _calculateAverageVect( normals );
@@ -357,51 +357,34 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
 Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 42 lines of code.
-
-
-  // get colors for verts 
-  // for 
   function _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition) {
-
     assert(verts.length == 3);
     var vertColors = [];
     for (var i = 0; i < verts.length; i++) {
-      var view = (new THREE.Vector3()).subVectors( cameraPosition, verts[i] );
+      var view = (new THREE.Vector3()).subVectors( verts[i], cameraPosition );
       vertColors[i] = Reflection.phongReflectionModel(verts[i], view, normals[i], lightPos, phongMaterial)
     }
-    // console.log(vertColors.length)
-    // console.log(vertColors)
-    // console.log(verts)
     assert(vertColors.length === verts.length);
     return vertColors;
   }
   function _getGouraudInterpolatedColor(baryCoord, vertColors) {
-    // console.log(baryCoord);
-    // console.log(vertColors);
     var color = new Pixel(0,0,0);
     var a = baryCoord.x
-   // console.log(baryCoord.x +baryCoord.y + baryCoord.z);
     color.plus(vertColors[0].copyMultiplyScalar(baryCoord.x))
     color.plus(vertColors[1].copyMultiplyScalar(baryCoord.y))
     color.plus(vertColors[2].copyMultiplyScalar(baryCoord.z))
     color.dividedBy(3);
     return color;
-
   }
-
-
-
 
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
   var phongMaterial = Renderer.getPhongMaterial(uvs, material);
   var lightPos = this.lightPos;
-  var cameraPosition = this.cameraPosition 
+  var cameraPosition = this.cameraPosition
   var eps = 0.01;
-  var vertColors = _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition) 
-  //console.log(vertColors)
+  var vertColors = _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition)
   var centroidDist = _getCentroidDist(projectedVerts)
-
 
   for (var x = boundBox.minX; x < boundBox.maxX; x++) {
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
@@ -421,6 +404,45 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
 
 Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
+  function _getPhongInterpolatedNormal(baryCoord, normals) {
+    var norm = new THREE.Vector3();
+    norm.add(normals[0].multiplyScalar(baryCoord.x));
+    norm.add(normals[1].multiplyScalar(baryCoord.y));
+    norm.add(normals[2].multiplyScalar(baryCoord.z));
+    return norm;
+  }
+
+  var boundBox = Renderer.computeBoundingBox(projectedVerts);
+  var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
+  var phongMaterial = Renderer.getPhongMaterial(uvs, material);
+  var lightPos = this.lightPos;
+  var cameraPosition = this.cameraPosition
+  var eps = 0.01;
+  var centroidDist = _getCentroidDist(projectedVerts)
+
+  for (var x = boundBox.minX; x < boundBox.maxX; x++) {
+    for (var y = boundBox.minY; y < boundBox.maxY; y++) {
+      var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
+      if (projectedTriangle.containsPoint(currentHalfPix)) {
+        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
+
+          var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+          var vertNorm  = _getPhongInterpolatedNormal(baryCoord, normals);
+
+          var currentVert = new THREE.Vector3();
+          currentVert.add(verts[0].multiplyScalar(baryCoord.x));
+          currentVert.add(verts[1].multiplyScalar(baryCoord.y));
+          currentVert.add(verts[2].multiplyScalar(baryCoord.z));
+
+          var view = (new THREE.Vector3()).subVectors( currentVert, cameraPosition );
+          var vertColor = Reflection.phongReflectionModel(currentVert, view, vertNorm, lightPos, phongMaterial);
+
+          this.buffer.setPixel(x,y,vertColor);
+          this.zBuffer[x][y] = centroidDist;
+        }
+      }
+    }
+  }
   // ----------- Our reference solution uses 53 lines of code.
   // ----------- STUDENT CODE END ------------
 };
