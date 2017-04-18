@@ -344,15 +344,27 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
-        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
+        var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+        var pixDepth = _getPixelDepth(projectedVerts, baryCoord);
+        if (pixDepth > -eps && pixDepth < this.zBuffer[x][y]) {
           this.buffer.setPixel(x,y,faceColor);
-          this.zBuffer[x][y] = centroidDist;
+          this.zBuffer[x][y] = pixDepth;
         }
       }
     }
   }
   // ----------- STUDENT CODE END ------------
 };
+
+ function _getPixelDepth(projectedVerts, baryCoord) {
+
+    var pixVertex = new THREE.Vector3(0,0,0);
+    pixVertex.add(projectedVerts[0].clone().multiplyScalar(baryCoord.x));
+    pixVertex.add(projectedVerts[1].clone().multiplyScalar(baryCoord.y));
+    pixVertex.add(projectedVerts[2].clone().multiplyScalar(baryCoord.z));
+
+    return pixVertex.z;
+  }
 
 Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
@@ -376,6 +388,7 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
     return color;
   }
 
+
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
   var phongMaterial = Renderer.getPhongMaterial(uvs, material);
@@ -383,16 +396,18 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
   var cameraPosition = this.cameraPosition
   var eps = 0.01;
   var vertColors = _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition)
-  var centroidDist = _getCentroidDist(projectedVerts)
+  //var centroidDist = _getCentroidDist(projectedVerts)
 
   for (var x = boundBox.minX; x < boundBox.maxX; x++) {
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
-        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
-          var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+        var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+        var pixDepth = _getPixelDepth(projectedVerts, baryCoord);
+          if (pixDepth > -eps && pixDepth < this.zBuffer[x][y]) {
+          
           this.buffer.setPixel(x,y,_getGouraudInterpolatedColor(baryCoord, vertColors));
-          this.zBuffer[x][y] = centroidDist;
+          this.zBuffer[x][y] = pixDepth;
         }
       }
     }
@@ -423,9 +438,10 @@ Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, mater
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
-        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
+        var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
+        var pixDepth = _getPixelDepth(projectedVerts, baryCoord);
+        if (pixDepth > -eps && pixDepth < this.zBuffer[x][y]) {
 
-          var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
           var vertNorm  = _getPhongInterpolatedNormal(baryCoord, normals);
 
           var currentVert = new THREE.Vector3();
@@ -437,7 +453,7 @@ Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, mater
           var vertColor = Reflection.phongReflectionModel(currentVert, view, vertNorm, lightPos, phongMaterial);
 
           this.buffer.setPixel(x,y,vertColor);
-          this.zBuffer[x][y] = centroidDist;
+          this.zBuffer[x][y] = pixDepth;
         }
       }
     }
