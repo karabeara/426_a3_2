@@ -335,8 +335,6 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   function _getCentroidDist(projectedVerts) {
     var centroidVertex = _calculateAverageVect(projectedVerts);
     return centroidVertex.z;
-
-
   }
 
 
