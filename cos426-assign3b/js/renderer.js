@@ -17,28 +17,23 @@ Reflection.phongReflectionModel = function(vertex, view, normal, lightPos, phong
   color.plus(phongMaterial.diffuse.copy().multipliedBy(ndotl));
 
   // ----------- STUDENT CODE BEGIN ------------
+  var lightVector = (new THREE.Vector3()).subVectors(lightPos, vertex);
+  var dist = lightVector.length();
+  var attenuation = dist * dist;
+
   // ambient
-  color.plus(phongMaterial.ambient);
+  color.plus(phongMaterial.ambient.copy());
 
-  // specular
-  //color.plus(phongMaterial.specular);
+  // specular: angle alpha -> angle for reflected ray
+  var reflection_vector = lightVector.reflect(normal);
+  reflection_vector.normalize();
+  view.normalize();
+  var cos_alpha = reflection_vector.dot( view );
 
-  // Specular reflection -> angle alpha -> angle for reflected ray
-  // var reflection_vector = ( new THREE.Vector3() ).reflect(normal);
-  // reflection_vector.normalize();
-  // view.normalize();
-  // var cos_alpha = reflection_vector.dot( view );
-  //
-  // var specularIntensity = Math.pow(cos_alpha, phongMaterial.shininess);
-  // //var phongTerm = new THREE.Vector3();
-  // color.multiplyScalar( specularIntensity );
-
-  // phongMaterial.specular;
-  // phongMaterial.shininess;
-
-  // if dot product negative, don't add specular
-  // getPhongMaterial
-
+  if (cos_alpha > 0) {
+    var specularIntensity = Math.pow(cos_alpha, phongMaterial.shininess);
+    color.plus(phongMaterial.specular.copy().multipliedBy(500 * specularIntensity / attenuation));
+  }
 
   // ----------- Our reference solution uses 9 lines of code.
   // ----------- STUDENT CODE END ------------
@@ -292,7 +287,6 @@ Renderer.computeBarycentric = function(projectedVerts, x, y) {
 };
 
 Renderer.drawTriangleWire = function(projectedVerts) {
-  //console.log("GSFD")
   var color = new Pixel(1.0, 0, 0);
   for (var i = 0; i < 3; i++) {
     var va = projectedVerts[(i + 1) % 3];
@@ -330,7 +324,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   function _getFlatColor(cameraPosition, lightPos) {
     var centroidVertex = _calculateAverageVect( verts );
     var centroidNormal = _calculateAverageVect( normals );
-    var view = ( new THREE.Vector3() ).subVectors( cameraPosition, centroidVertex );
+    var view = ( new THREE.Vector3() ).subVectors( centroidVertex, cameraPosition );
     var phongMaterial = Renderer.getPhongMaterial( uvs, material );
     var flatColor = Reflection.phongReflectionModel( centroidVertex, view, centroidNormal, lightPos, phongMaterial );
     return flatColor;
