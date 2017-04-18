@@ -17,6 +17,8 @@ Reflection.phongReflectionModel = function(vertex, view, normal, lightPos, phong
   color.plus(phongMaterial.diffuse.copy().multipliedBy(ndotl));
 
   // ----------- STUDENT CODE BEGIN ------------
+  // if dot product negative, don't add specular
+  // getPhongMaterial
   // ----------- Our reference solution uses 9 lines of code.
   // ----------- STUDENT CODE END ------------
 
@@ -183,52 +185,32 @@ Renderer.projectVertices = function(verts, viewMat) {
 
   // ----------- STUDENT CODE BEGIN ------------
   // viewMat --> camera's view matrix = K * [R | t] where K is the projection matrix and [R | t] is the inverse of the camera pose
-  this.updateCameraParameters();
-
-  var rightVector = new THREE.Vector3( );
-  rightVector = rightVector.crossVectors( this.cameraLookAtVector, this.cameraUpVector );
-
-  var cameraMat = new THREE.Matrix4();
-  // cameraMat.set( 1,0,0,0,
-  //                0,1,0,0,
-  //                0,0,1,0,
-  //                0,0,0,1,);
-  // right, up, back, and eye vectors in respective order
-  cameraMat.set( rightVector.x,             rightVector.y,             rightVector.z,             0,
-                 this.cameraUpVector.x,     this.cameraUpVector.y,     this.cameraUpVector.z,     0,
-                 this.cameraLookAtVector.x, this.cameraLookAtVector.y, this.cameraLookAtVector.z, 0,
-                 this.cameraPosition.x,     this.cameraPosition.y,     this.cameraPosition.z,     1 );
-
-  var i_proj = 0;
+  var i_outOfBounds = 0;
 
   for (var i = 0; i < verts.length; i++) {
+    var orthogonalScale = 5;
     var orthogonalScale = verts[i].z + 5;
 
-    projectedVerts[i_proj] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
-    //projectedVerts[i_proj] = projectedVerts[i_proj].applyMatrix4(cameraMat);
-    projectedVerts[i_proj] = projectedVerts[i_proj].applyMatrix4(viewMat);
+    projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
+    projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
 
-    projectedVerts[i_proj].x /= orthogonalScale * this.height / this.width;
-    projectedVerts[i_proj].y /= orthogonalScale * this.height / this.width;
+    projectedVerts[i].x /= projectedVerts[i].w;
+    projectedVerts[i].y /= projectedVerts[i].w;
+    projectedVerts[i].z /= projectedVerts[i].w;
 
-    projectedVerts[i_proj].x = projectedVerts[i_proj].x * this.width / 2 + this.width / 2;
-    projectedVerts[i_proj].y = projectedVerts[i_proj].y * this.height / 2 + this.height / 2;
+    projectedVerts[i].x = projectedVerts[i].x * this.width / 2 + this.width / 2;
+    projectedVerts[i].y = projectedVerts[i].y * this.height / 2 + this.height / 2;
 
-    i_proj++;
-
-    // For Z-buffer
-    // if (projectedVerts[i].z <= 0) {
-    //   return [];
-    // }
-    // else if (this.negNear > Math.abs(projectedVerts[i].z) || this.negFar < Math.abs(projectedVerts[i].z)) {
-    //   return [];
-    // }
-    // else {
-    //    i_proj++;
-    //}
+    if ( projectedVerts[i].z >= 0 )
+      i_outOfBounds++;
+    if ( this.negNear >= projectedVerts[i].z && this.negFar <= projectedVerts[i].z ) {} // do nothing
+    else { i_outOfBounds++; }
   }
-  // ----------- Our reference solution uses 12 lines of code.
 
+  // Check if triangle out of bounds --> if out of bounds, do not render triangle
+  if ( i_outOfBounds === 3 ) { return undefined; }
+
+  // ----------- Our reference solution uses 12 lines of code.
   // ----------- STUDENT CODE END ------------
   return projectedVerts;
 };
@@ -246,7 +228,6 @@ Renderer.computeBoundingBox = function(projectedVerts) {
 
     var roundedVertX = Math.round(vert.x);
     var roundedVertY = Math.round(vert.y);
-
 
     if (roundedVertX < box.minX) {
       box.minX = roundedVertX;
@@ -277,17 +258,17 @@ Renderer.computeBarycentric = function(projectedVerts, x, y) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 15 lines of code.
 
-var triPoints = projectedVerts.map(function(vert) {
-  return new THREE.Vector3(vert.x, vert.y, 0);
-})
-var point = new THREE.Vector3(x,y, 0);
+  var triPoints = projectedVerts.map(function(vert) {
+    return new THREE.Vector3(vert.x, vert.y, 0);
+  })
+  var point = new THREE.Vector3(x,y, 0);
 
-var triangle = new THREE.Triangle(make2D(triPoints[0]), make2D(triPoints[1]), make2D(triPoints[2]));
-if (triangle.containsPoint(point)) {
-  return triangle.barycoordFromPoint(point)
-}
-else {
-    return undefined;
+  var triangle = new THREE.Triangle(make2D(triPoints[0]), make2D(triPoints[1]), make2D(triPoints[2]));
+  if (triangle.containsPoint(point)) {
+    return triangle.barycoordFromPoint(point)
+  }
+  else {
+      return undefined;
   }
   // ----------- STUDENT CODE END ------------
   return triCoords;
@@ -320,7 +301,6 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   function _calculateAverageVect(normals) {
     var avgNorm = new THREE.Vector3(0,0,0);
     normals.forEach(function (norm) {
-     
       avgNorm.add(norm)
     })
     avgNorm.divideScalar(normals.length)
@@ -333,7 +313,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
       flatColor.plus(Reflection.ambient)
     }
     else {
-    flatColor.plus(material.ambient);
+      flatColor.plus(material.ambient);
     }
     //console.log(normals)
     var centroidNormal = _calculateAverageVect(normals);
@@ -346,28 +326,41 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
       var diffuseComponent = Reflection.diffuse.copy().multipliedBy(ndotl);
     }
     else {
-    var diffuseComponent = material.diffuse.copy().multipliedBy(ndotl);
+      var diffuseComponent = material.diffuse.copy().multipliedBy(ndotl);
     }
     flatColor.plus(diffuseComponent);
     return flatColor;
   }
 
+  function _getCentroidDist(projectedVerts) {
+    var centroidVertex = _calculateAverageVect(projectedVerts);
+    return centroidVertex.z;
 
 
-  //console.log(verts)
+  }
+
+
+
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
   var faceColor = _getFlatColor(this.lightPos);
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
-  //console.log(projectedTriangle)
-  //assert(false)
+  var centroidDist = _getCentroidDist(projectedVerts)
+  console.log(centroidDist)
+
+  var eps = 0.01;
+
   for (var x = boundBox.minX; x < boundBox.maxX; x++) {
     for (var y = boundBox.minY; y < boundBox.maxY; y++) {
-      var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) +0.5, 0);
+      var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
+        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
         this.buffer.setPixel(x,y,faceColor);
+        }
         //this.buffer.setPixel(x, y, new Pixel(1,0,0));
       }
+
        //this.buffer.setPixel(x, y, new Pixel(1,0,0));// for the bounding box
+
     }
   }
   // ----------- STUDENT CODE END ------------
