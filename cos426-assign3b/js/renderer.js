@@ -406,9 +406,9 @@ Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, mater
   // ----------- STUDENT CODE BEGIN ------------
   function _getPhongInterpolatedNormal(baryCoord, normals) {
     var norm = new THREE.Vector3();
-    norm.add(normals[0].multiplyScalar(baryCoord.x));
-    norm.add(normals[1].multiplyScalar(baryCoord.y));
-    norm.add(normals[2].multiplyScalar(baryCoord.z));
+    norm.add(normals[0].clone().multiplyScalar(baryCoord.x));
+    norm.add(normals[1].clone().multiplyScalar(baryCoord.y));
+    norm.add(normals[2].clone().multiplyScalar(baryCoord.z));
     return norm;
   }
 
@@ -430,9 +430,9 @@ Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, mater
           var vertNorm  = _getPhongInterpolatedNormal(baryCoord, normals);
 
           var currentVert = new THREE.Vector3();
-          currentVert.add(verts[0].multiplyScalar(baryCoord.x));
-          currentVert.add(verts[1].multiplyScalar(baryCoord.y));
-          currentVert.add(verts[2].multiplyScalar(baryCoord.z));
+          currentVert.add(verts[0].clone().multiplyScalar(baryCoord.x));
+          currentVert.add(verts[1].clone().multiplyScalar(baryCoord.y));
+          currentVert.add(verts[2].clone().multiplyScalar(baryCoord.z));
 
           var view = (new THREE.Vector3()).subVectors( currentVert, cameraPosition );
           var vertColor = Reflection.phongReflectionModel(currentVert, view, vertNorm, lightPos, phongMaterial);
