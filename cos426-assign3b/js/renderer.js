@@ -17,8 +17,29 @@ Reflection.phongReflectionModel = function(vertex, view, normal, lightPos, phong
   color.plus(phongMaterial.diffuse.copy().multipliedBy(ndotl));
 
   // ----------- STUDENT CODE BEGIN ------------
+  // ambient
+  color.plus(phongMaterial.ambient);
+
+  // specular
+  //color.plus(phongMaterial.specular);
+
+  // Specular reflection -> angle alpha -> angle for reflected ray
+  // var reflection_vector = ( new THREE.Vector3() ).reflect(normal);
+  // reflection_vector.normalize();
+  // view.normalize();
+  // var cos_alpha = reflection_vector.dot( view );
+  //
+  // var specularIntensity = Math.pow(cos_alpha, phongMaterial.shininess);
+  // //var phongTerm = new THREE.Vector3();
+  // color.multiplyScalar( specularIntensity );
+
+  // phongMaterial.specular;
+  // phongMaterial.shininess;
+
   // if dot product negative, don't add specular
   // getPhongMaterial
+
+
   // ----------- Our reference solution uses 9 lines of code.
   // ----------- STUDENT CODE END ------------
 
@@ -188,9 +209,6 @@ Renderer.projectVertices = function(verts, viewMat) {
   var i_outOfBounds = 0;
 
   for (var i = 0; i < verts.length; i++) {
-    var orthogonalScale = 5;
-    var orthogonalScale = verts[i].z + 5;
-
     projectedVerts[i] = new THREE.Vector4(verts[i].x, verts[i].y, verts[i].z, 1.0);
     projectedVerts[i] = projectedVerts[i].applyMatrix4(viewMat);
 
@@ -201,8 +219,7 @@ Renderer.projectVertices = function(verts, viewMat) {
     projectedVerts[i].x = projectedVerts[i].x * this.width / 2 + this.width / 2;
     projectedVerts[i].y = projectedVerts[i].y * this.height / 2 + this.height / 2;
 
-    if ( projectedVerts[i].z >= 0 )
-      i_outOfBounds++;
+    if ( projectedVerts[i].z >= 0 ) { i_outOfBounds++; }
     if ( this.negNear >= projectedVerts[i].z && this.negFar <= projectedVerts[i].z ) {} // do nothing
     else { i_outOfBounds++; }
   }
@@ -306,44 +323,23 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
     avgNorm.divideScalar(normals.length)
     return avgNorm;
   }
-  function _getFlatColor(lightPos) {
-    var flatColor = new Pixel(0, 0, 0);
-    //console.log(material);
-    if (material.ambient === undefined) {
-      flatColor.plus(Reflection.ambient)
-    }
-    else {
-      flatColor.plus(material.ambient);
-    }
-    //console.log(normals)
-    var centroidNormal = _calculateAverageVect(normals);
-    //console.log(centroidNormal)
-    var centroidVertex = _calculateAverageVect(verts);
-    var light_dir = (new THREE.Vector3()).subVectors(lightPos, centroidVertex).normalize();
-    var ndotl = centroidNormal.dot(light_dir);
-
-    if (material.diffuseComponent === undefined) {
-      var diffuseComponent = Reflection.diffuse.copy().multipliedBy(ndotl);
-    }
-    else {
-      var diffuseComponent = material.diffuse.copy().multipliedBy(ndotl);
-    }
-    flatColor.plus(diffuseComponent);
-    return flatColor;
-  }
-
   function _getCentroidDist(projectedVerts) {
     var centroidVertex = _calculateAverageVect(projectedVerts);
     return centroidVertex.z;
   }
-
-
+  function _getFlatColor(cameraPosition, lightPos) {
+    var centroidVertex = _calculateAverageVect( verts );
+    var centroidNormal = _calculateAverageVect( normals );
+    var view = ( new THREE.Vector3() ).subVectors( cameraPosition, centroidVertex );
+    var phongMaterial = Renderer.getPhongMaterial( uvs, material );
+    var flatColor = Reflection.phongReflectionModel( centroidVertex, view, centroidNormal, lightPos, phongMaterial );
+    return flatColor;
+  }
 
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
-  var faceColor = _getFlatColor(this.lightPos);
+  var faceColor = _getFlatColor(this.cameraPosition, this.lightPos);
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var centroidDist = _getCentroidDist(projectedVerts)
-  //console.log(centroidDist)
 
   var eps = 0.01;
 
@@ -352,14 +348,12 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
       var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
       if (projectedTriangle.containsPoint(currentHalfPix)) {
         if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
-        this.buffer.setPixel(x,y,faceColor);
-        this.zBuffer[x][y] = centroidDist;
+          this.buffer.setPixel(x,y,faceColor);
+          this.zBuffer[x][y] = centroidDist;
         }
         //this.buffer.setPixel(x, y, new Pixel(1,0,0));
       }
-
-       //this.buffer.setPixel(x, y, new Pixel(1,0,0));// for the bounding box
-
+      //this.buffer.setPixel(x, y, new Pixel(1,0,0));// for the bounding box
     }
   }
   // ----------- STUDENT CODE END ------------
