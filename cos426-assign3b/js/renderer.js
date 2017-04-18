@@ -345,7 +345,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
   var faceColor = _getFlatColor(this.lightPos);
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var centroidDist = _getCentroidDist(projectedVerts)
-  console.log(centroidDist)
+  //console.log(centroidDist)
 
   var eps = 0.01;
 
@@ -355,6 +355,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
       if (projectedTriangle.containsPoint(currentHalfPix)) {
         if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
         this.buffer.setPixel(x,y,faceColor);
+        this.zBuffer[x][y] = centroidDist;
         }
         //this.buffer.setPixel(x, y, new Pixel(1,0,0));
       }
