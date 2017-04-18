@@ -310,23 +310,26 @@ Renderer.drawTriangleWire = function(projectedVerts) {
   }
 };
 
+// do z buffer stuff
+function _calculateAverageVect(normals) {
+  var avgNorm = new THREE.Vector3(0,0,0);
+  normals.forEach(function (norm) {
+    avgNorm.add(norm)
+  })
+  avgNorm.divideScalar(normals.length)
+  return avgNorm;
+}
+function _getCentroidDist(projectedVerts) {
+  var centroidVertex = _calculateAverageVect(projectedVerts);
+  return centroidVertex.z;
+}
+
 Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 45 lines of code.
 
-  // do z buffer stuff
-  function _calculateAverageVect(normals) {
-    var avgNorm = new THREE.Vector3(0,0,0);
-    normals.forEach(function (norm) {
-      avgNorm.add(norm)
-    })
-    avgNorm.divideScalar(normals.length)
-    return avgNorm;
-  }
-  function _getCentroidDist(projectedVerts) {
-    var centroidVertex = _calculateAverageVect(projectedVerts);
-    return centroidVertex.z;
-  }
+
+  
   function _getFlatColor(cameraPosition, lightPos) {
     var centroidVertex = _calculateAverageVect( verts );
     var centroidNormal = _calculateAverageVect( normals );
@@ -351,9 +354,7 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
           this.buffer.setPixel(x,y,faceColor);
           this.zBuffer[x][y] = centroidDist;
         }
-        //this.buffer.setPixel(x, y, new Pixel(1,0,0));
       }
-      //this.buffer.setPixel(x, y, new Pixel(1,0,0));// for the bounding box
     }
   }
   // ----------- STUDENT CODE END ------------
@@ -362,6 +363,55 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
 Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 42 lines of code.
+
+
+  // get colors for verts 
+  // for 
+  function _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition) {
+
+    assert(verts.length == 3);
+    var vertColors = [];
+    for (var i = 0; i < verts.length; i++) {
+      var view = (new THREE.Vector3()).subVectors( cameraPosition, verts[i] );
+      vertColors[i] = Reflection.phongReflectionModel(verts[i], view, normals[i], lightPos, phongMaterial)
+    }
+    // console.log(vertColors.length)
+    // console.log(vertColors)
+    // console.log(verts)
+    assert(vertColors.length === verts.length);
+    return vertColors;
+  }
+  function _getGouraudInterpolatedColor() {
+
+    return vertColors[2];
+
+  }
+
+
+
+
+  var boundBox = Renderer.computeBoundingBox(projectedVerts);
+  var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
+  var phongMaterial = Renderer.getPhongMaterial(uvs, material);
+  var lightPos = this.lightPos;
+  var cameraPosition = this.cameraPosition 
+  var eps = 0.01;
+  var vertColors = _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition) 
+  //console.log(vertColors)
+  var centroidDist = _getCentroidDist(projectedVerts)
+
+
+  for (var x = boundBox.minX; x < boundBox.maxX; x++) {
+    for (var y = boundBox.minY; y < boundBox.maxY; y++) {
+      var currentHalfPix = new THREE.Vector3(Math.floor(x) + 0.5, Math.floor(y) + 0.5, 0);
+      if (projectedTriangle.containsPoint(currentHalfPix)) {
+        if (centroidDist > -eps && centroidDist < this.zBuffer[x][y]) {
+          this.buffer.setPixel(x,y,_getGouraudInterpolatedColor());
+          this.zBuffer[x][y] = centroidDist;
+        }
+      }
+    }
+  }
   // ----------- STUDENT CODE END ------------
 };
 
