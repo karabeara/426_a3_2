@@ -366,7 +366,7 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
     assert(verts.length == 3);
     var vertColors = [];
     for (var i = 0; i < verts.length; i++) {
-      var view = (new THREE.Vector3()).subVectors( cameraPosition, verts[i] );
+      var view = (new THREE.Vector3()).subVectors(verts[i], cameraPosition );
       vertColors[i] = Reflection.phongReflectionModel(verts[i], view, normals[i], lightPos, phongMaterial)
     }
     // console.log(vertColors.length)
@@ -379,12 +379,11 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
     // console.log(baryCoord);
     // console.log(vertColors);
     var color = new Pixel(0,0,0);
-    var a = baryCoord.x
    // console.log(baryCoord.x +baryCoord.y + baryCoord.z);
     color.plus(vertColors[0].copyMultiplyScalar(baryCoord.x))
     color.plus(vertColors[1].copyMultiplyScalar(baryCoord.y))
     color.plus(vertColors[2].copyMultiplyScalar(baryCoord.z))
-    color.dividedBy(3);
+    color.dividedBy(1);
     return color;
 
   }
