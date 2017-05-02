@@ -32,7 +32,7 @@ Reflection.phongReflectionModel = function(vertex, view, normal, lightPos, phong
 
   if (cos_alpha > 0) {
     var specularIntensity = Math.pow(cos_alpha, phongMaterial.shininess);
-    color.plus(phongMaterial.specular.copy().multipliedBy(500 * specularIntensity / attenuation));
+    color.plus(phongMaterial.specular.copy().multipliedBy(4 * specularIntensity / attenuation));
   }
 
   // ----------- Our reference solution uses 9 lines of code.
@@ -215,7 +215,7 @@ Renderer.projectVertices = function(verts, viewMat) {
     projectedVerts[i].y = projectedVerts[i].y * this.height / 2 + this.height / 2;
 
     if ( projectedVerts[i].z >= 0 ) { i_outOfBounds++; }
-    if ( this.negNear >= projectedVerts[i].z && this.negFar <= projectedVerts[i].z ) {} // do nothing
+    if ( this.negNear >= projectedVerts[i].z && this.negFar <= projectedVerts[i].z ) { } // do nothing
     else { i_outOfBounds++; }
   }
 
@@ -313,28 +313,45 @@ function _calculateAverageVect(normals) {
   avgNorm.divideScalar(normals.length)
   return avgNorm;
 }
+
 function _getCentroidDist(projectedVerts) {
   var centroidVertex = _calculateAverageVect(projectedVerts);
   return centroidVertex.z;
+}
+
+function _interpolateUVCoordinates(uvs, baryCoord) {
+  var uv_here = new THREE.Vector2( 0, 0 );
+  if (uvs === undefined) {
+    return undefined;
+  } else {
+    uv_here.x += uvs[0].x * baryCoord.x;
+    uv_here.x += uvs[1].x * baryCoord.y;
+    uv_here.x += uvs[2].x * baryCoord.z;
+
+    uv_here.y += uvs[0].y * baryCoord.x;
+    uv_here.y += uvs[1].y * baryCoord.y;
+    uv_here.y += uvs[2].y * baryCoord.z;
+  }
+  return uv_here;
 }
 
 Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 45 lines of code.
 
-
-
-  function _getFlatColor(cameraPosition, lightPos) {
+  function _getFlatColor(cameraPosition, lightPos, projectedTriangle) {
     var centroidVertex = _calculateAverageVect( verts );
     var centroidNormal = _calculateAverageVect( normals );
     var view = ( new THREE.Vector3() ).subVectors( centroidVertex, cameraPosition );
-    var phongMaterial = Renderer.getPhongMaterial( uvs, material );
+    var baryCoord = projectedTriangle.barycoordFromPoint(centroidVertex);
+    var uv_here = _interpolateUVCoordinates(uvs, baryCoord);
+    var phongMaterial = Renderer.getPhongMaterial( uv_here, material );
     var flatColor = Reflection.phongReflectionModel( centroidVertex, view, centroidNormal, lightPos, phongMaterial );
     return flatColor;
   }
 
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
-  var faceColor = _getFlatColor(this.cameraPosition, this.lightPos);
+  var faceColor = _getFlatColor(this.cameraPosition, this.lightPos, projectedTriangle);
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var centroidDist = _getCentroidDist(projectedVerts)
 
@@ -369,12 +386,16 @@ Renderer.drawTriangleFlat = function(verts, projectedVerts, normals, uvs, materi
 Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
   // ----------- Our reference solution uses 42 lines of code.
-  function _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition) {
+  function _getGouraudVectColors(verts, normals, lightPos, uvs, cameraPosition, material) {
     assert(verts.length == 3);
     var vertColors = [];
     for (var i = 0; i < verts.length; i++) {
+      var uv_here = new THREE.Vector2();
+      if (uvs === undefined) { uv_here = undefined; }
+      else                   { uv_here = uvs[i]; }
+      var phongMaterial = Renderer.getPhongMaterial(uv_here, material);
       var view = (new THREE.Vector3()).subVectors(verts[i], cameraPosition );
-      vertColors[i] = Reflection.phongReflectionModel(verts[i], view, normals[i], lightPos, phongMaterial)
+      vertColors[i] = Reflection.phongReflectionModel(verts[i], view, normals[i], lightPos, phongMaterial);
     }
     assert(vertColors.length === verts.length);
     return vertColors;
@@ -388,14 +409,13 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
     return color;
   }
 
-
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
   var phongMaterial = Renderer.getPhongMaterial(uvs, material);
   var lightPos = this.lightPos;
   var cameraPosition = this.cameraPosition
   var eps = 0.01;
-  var vertColors = _getGouraudVectorColors(verts, normals, lightPos, phongMaterial, cameraPosition)
+  var vertColors = _getGouraudVectColors(verts, normals, lightPos, uvs, cameraPosition, material)
   //var centroidDist = _getCentroidDist(projectedVerts)
 
   for (var x = boundBox.minX; x < boundBox.maxX; x++) {
@@ -405,7 +425,7 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
         var baryCoord = projectedTriangle.barycoordFromPoint(currentHalfPix);
         var pixDepth = _getPixelDepth(projectedVerts, baryCoord);
           if (pixDepth > -eps && pixDepth < this.zBuffer[x][y]) {
-          
+
           this.buffer.setPixel(x,y,_getGouraudInterpolatedColor(baryCoord, vertColors));
           this.zBuffer[x][y] = pixDepth;
         }
@@ -418,17 +438,34 @@ Renderer.drawTriangleGouraud = function(verts, projectedVerts, normals, uvs, mat
 
 Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, material) {
   // ----------- STUDENT CODE BEGIN ------------
-  function _getPhongInterpolatedNormal(baryCoord, normals) {
+  function _getPhongInterpolatedNormal(baryCoord, normals, uv_here, material) {
     var norm = new THREE.Vector3();
-    norm.add(normals[0].clone().multiplyScalar(baryCoord.x));
-    norm.add(normals[1].clone().multiplyScalar(baryCoord.y));
-    norm.add(normals[2].clone().multiplyScalar(baryCoord.z));
+
+    if ( material.xyzNormal === undefined || uv_here === undefined ) {
+      // do nothing with normal mapping, simply interpolate from 3 vertices' normals
+      norm.add(normals[0].clone().multiplyScalar(baryCoord.x));
+      norm.add(normals[1].clone().multiplyScalar(baryCoord.y));
+      norm.add(normals[2].clone().multiplyScalar(baryCoord.z));
+    }
+    else {
+      var xyzNormal_RGB = material.xyzNormal.getPixel(Math.floor(uv_here.x * (material.xyzNormal.width-1)),
+        Math.floor(uv_here.y * (material.xyzNormal.height-1)));
+
+      var xyzNormal = new THREE.Vector3();
+
+      xyzNormal.x = 2 * xyzNormal_RGB.r - 1;
+      xyzNormal.y = 2 * xyzNormal_RGB.g - 1;
+      xyzNormal.z = 2 * xyzNormal_RGB.b - 1;
+
+      norm = xyzNormal;
+    }
+
     return norm;
   }
 
   var boundBox = Renderer.computeBoundingBox(projectedVerts);
   var projectedTriangle = new THREE.Triangle(projectedVerts[0], projectedVerts[1], projectedVerts[2]);
-  var phongMaterial = Renderer.getPhongMaterial(uvs, material);
+  //var phongMaterial = Renderer.getPhongMaterial(uvs, material);
   var lightPos = this.lightPos;
   var cameraPosition = this.cameraPosition
   var eps = 0.01;
@@ -442,7 +479,11 @@ Renderer.drawTrianglePhong = function(verts, projectedVerts, normals, uvs, mater
         var pixDepth = _getPixelDepth(projectedVerts, baryCoord);
         if (pixDepth > -eps && pixDepth < this.zBuffer[x][y]) {
 
-          var vertNorm  = _getPhongInterpolatedNormal(baryCoord, normals);
+          var uv_here = new THREE.Vector3();
+          var uv_here = _interpolateUVCoordinates(uvs, baryCoord);
+          var phongMaterial = Renderer.getPhongMaterial(uv_here, material);
+
+          var vertNorm  = _getPhongInterpolatedNormal(baryCoord, normals, uv_here, material);
 
           var currentVert = new THREE.Vector3();
           currentVert.add(verts[0].clone().multiplyScalar(baryCoord.x));
